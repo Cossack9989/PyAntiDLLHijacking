@@ -2,17 +2,15 @@
 
 **Author: C0ss4ck@NJUPT.X1cT34m**
 
-// <font color=red>red</font> means **underway**, <font color=blue>blue</font> means **next**, <font color=green>green</font> means **done**
-
 ### Detecor
 
 Based on 
 - checking
-	- <font color=red>`KnownDlls`</font>
-	- <font color=blue>3rd party plugins</font>
+	- `KnownDlls` (v0.1 DONE)
+	- 3rd party plugins (v0.1 UNDERWAY)
 - analizing
-	- <font color=blue>decompilation</font>
-	- <font color=blue>patched dll's test</font>
+	- decompilation (v0.1 UNDERWAY)
+	- patched dll's test (v0.1 UNDERWAY)
 
 ### Patcher
 
