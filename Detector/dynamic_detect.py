@@ -4,14 +4,20 @@ from time import sleep
 from ctypes import byref, create_unicode_buffer, sizeof, WinDLL
 from ctypes.wintypes import DWORD, HMODULE, MAX_PATH
 
-whiteList = ['ntdll.dll']
+whiteList = [[], []]
+whiteList[0] = ['ntdll.dll', 'kernelbase.dll']  # 系统运行必需(最底层API)
+whiteList[1] = ['ucrtbase.dll', 'version.dll', 'cryptbase.dll', 'msvcp_win.dll']  # 大多DLL间接调用必需(较底层API)
 
-class Detect:
+
+class Detect(object):
 
     def __init__(self, target_pcmd):
         self.KnownDlls = []
         self.LoadedDlls = []
         self.QuickAnalysisRes = []
+        self.QuickAnalysisRes2 = []
+        self.ThirdPartyDlls = []
+        self.SigCheckRes = []
         self.target_pcmd = target_pcmd.split()
         self.process = None
         self.tmp_monitor = None
@@ -33,7 +39,11 @@ class Detect:
         new_module_list = []
         for module in module_list:
             parsed = module.split('\\')
-            if parsed[0] == 'C:' and parsed[1] == 'Windows':
+            if (parsed[0] == 'C:'
+                    and parsed[1] == 'Windows'
+                    and (parsed[2] == 'System32'
+                         or parsed[2] == 'SYSTEM32'
+                         or parsed[2] == 'SysWOW64')):
                 new_module_list.append(parsed[-1].lower())
             else:
                 new_module_list.append(module.lower())
@@ -75,7 +85,7 @@ class Detect:
                 buf_size = sizeof(buf)
                 needed = DWORD()
                 if not self.Psapi.EnumProcessModulesEx(hProcess, byref(buf), buf_size,
-                                                  byref(needed), LIST_MODULES_ALL):
+                                                       byref(needed), LIST_MODULES_ALL):
                     raise OSError('EnumProcessModulesEx failed')
                 if buf_size < needed.value:
                     buf_count = needed.value // (buf_size // buf_count)
@@ -87,7 +97,7 @@ class Detect:
             buf = create_unicode_buffer(MAX_PATH)
             nSize = DWORD()
             if not self.Psapi.GetModuleFileNameExW(hProcess, hModule,
-                                              byref(buf), byref(nSize)):
+                                                   byref(buf), byref(nSize)):
                 raise OSError('GetModuleFileNameEx failed')
             return buf.value
 
@@ -106,31 +116,46 @@ class Detect:
 
         try:
             dll_list = get_process_modules(self.process.pid)[1:]
-            # print('dll_list: ', dll_list)
             self.LoadedDlls = dll_list
         except OSError as ose:
             print(str(ose))
             self.LoadedDlls = []
 
     def QuickAnalysis(self):
+        prefix = '\\'.join(self.target_pcmd[0].lower().split(' ')[0].split('\\')[:-1])
+        Sys_prefix = ['c:\\windows\\system32\\', 'c:\\windows\\syswow64\\']
         self.StartProcess()
-        sleep(10) # How to judge the status of a process?
+        sleep(5)  # How to judge the status of a process?
         self.GetKnownDlls()
         self.KnownDlls = self.standardize(self.KnownDlls)
         self.GetLoadedDlls()
         self.LoadedDlls = self.standardize(self.LoadedDlls)
         for i in self.LoadedDlls:
-            if (not i in self.KnownDlls) and (not i in whiteList):
-                self.QuickAnalysisRes.append(i)
+            i = i.replace(Sys_prefix[0], '').replace(Sys_prefix[1], '')
+            if (i not in self.KnownDlls) and (i not in whiteList[0]):
+                if not i.startswith(prefix):
+                    self.QuickAnalysisRes.append(i)
+                    if i not in whiteList[1]:
+                        self.QuickAnalysisRes2.append(i)
+                elif not (i.startswith(Sys_prefix[0]) or i.startswith(Sys_prefix[1])):
+                    self.ThirdPartyDlls.append(i)
         self.KillProcess()
 
-test = Detect("D:\\SNS\\WeChat\\WeChat.exe")
-test.QuickAnalysis()
-print()
-print("============== QuickAnalysis ===============")
-print("White:",whiteList)
-print("Load:",test.LoadedDlls)
-print("Know:",test.KnownDlls)
-print("RES:",test.QuickAnalysisRes)
+    def SigCheck(self):
+        # TODO 
+        return
 
-# TODO:WhiteList + ProStatusJudger
+def simpleTest():
+    test = Detect(r"D:\Environ\python\python380-32\python.exe")
+    test.QuickAnalysis()
+    print()
+    print("============== QuickAnalysis ===============")
+    print("pid:", test.process.pid)
+    print("所有疑似系统DLL劫持:", test.QuickAnalysisRes)
+    print("严重疑似系统DLL劫持:", test.QuickAnalysisRes2)
+    print("第三方DLL:", test.ThirdPartyDlls)
+    if test.ThirdPartyDlls:
+        test.SigCheck()
+        print("未签名第三方DLL劫持:", test.SigCheckRes)
+
+simpleTest()
