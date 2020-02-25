@@ -1,0 +1,4 @@
+from DynamicDetector.DynamicDetectFromRunning import DynamicDetect as ddr
+from DynamicDetector.DynamicDetectFromRunning import test as ddr_test
+from StaticDetector.StaticDetectFromPefile import StaticDetect as sdp
+from StaticDetector.StaticDetectFromPefile import test as sdp_test
