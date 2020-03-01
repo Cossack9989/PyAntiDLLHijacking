@@ -9,7 +9,8 @@ Based on
 	- `KnownDlls` (v0.1 DONE)
 	- 3rd party plugins (v0.1 UNDERWAY)
 - analizing
-	- decompilation (v0.1 UNDERWAY)
+	- pydbg for python3 has been fixed
+	- decompilation (v0.1 DONE)
 	- patched dll's test (v0.1 UNDERWAY)
 
 ### Patcher
