@@ -1,5 +1,5 @@
 import winreg
-import subprocess
+import subprocess, os
 from time import sleep
 from ctypes import byref, create_unicode_buffer, sizeof, WinDLL
 from ctypes.wintypes import DWORD, HMODULE, MAX_PATH
@@ -23,6 +23,9 @@ class DynamicDetect(object):
         self.tmp_monitor = None
         self.Psapi = WinDLL('Psapi.dll')
         self.Kernel32 = WinDLL('kernel32.dll')
+
+    def checkPath(self):
+        return os.access(self.exePathName, os.X_OK)
 
     def GetKnownDlls(self):
         handler = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 'SYSTEM\CurrentControlSet\Control\Session Manager')
@@ -108,28 +111,33 @@ class DynamicDetect(object):
             self.LoadedDlls = []
 
     def QuickAnalysis(self):
-        prefix = '\\'.join(self.target_pcmd[0].lower().split(' ')[0].split('\\')[:-1])
-        Sys_prefix = ['c:\\windows\\system32\\', 'c:\\windows\\syswow64\\']
-        self.StartProcess()
-        print("Waiting Your Click")  # How to judge the status of a process?
-        input()
-        self.GetKnownDlls()
-        self.KnownDlls = self.standardize(self.KnownDlls)
-        self.GetLoadedDlls()
-        self.LoadedDlls = self.standardize(self.LoadedDlls)
-        for i in self.LoadedDlls:
-            i = i.replace(Sys_prefix[0], '').replace(Sys_prefix[1], '')
-            if (i not in self.KnownDlls) and (i not in whiteList[0]):
-                if not i.startswith(prefix):
-                    self.QuickAnalysisRes.append(i)
-                    if i not in whiteList[1]:
-                        self.QuickAnalysisRes2.append(i)
-                elif not (i.startswith(Sys_prefix[0]) or i.startswith(Sys_prefix[1])):
-                    self.ThirdPartyDlls.append(i)
-        self.KillProcess()
+        if self.checkPath():
+            prefix = '\\'.join(self.target_pcmd[0].lower().split(' ')[0].split('\\')[:-1])
+            Sys_prefix = ['c:\\windows\\system32\\', 'c:\\windows\\syswow64\\']
+            self.StartProcess()
+            print("Waiting Your Click")  # How to judge the status of a process?
+            input()
+            self.GetKnownDlls()
+            self.KnownDlls = self.standardize(self.KnownDlls)
+            self.GetLoadedDlls()
+            self.LoadedDlls = self.standardize(self.LoadedDlls)
+            for i in self.LoadedDlls:
+                i = i.replace(Sys_prefix[0], '').replace(Sys_prefix[1], '')
+                if (i not in self.KnownDlls) and (i not in whiteList[0]):
+                    if not i.startswith(prefix):
+                        self.QuickAnalysisRes.append(i)
+                        if i not in whiteList[1]:
+                            self.QuickAnalysisRes2.append(i)
+                    elif not (i.startswith(Sys_prefix[0]) or i.startswith(Sys_prefix[1])):
+                        self.ThirdPartyDlls.append(i)
+            self.KillProcess()
+            return 1
+        return 0
+
 
 def test():
-    test = DynamicDetect(r"D:\Environ\python\python380-32\python.exe")
+    print("Give me path")
+    test = DynamicDetect(input())
     test.QuickAnalysis()
     print()
     print("============== QuickAnalysis ===============")
